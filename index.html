@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neural Network 1 post read</title>
+<meta name="description" content="How a single neuron becomes a neural network: from the spiral problem, through logistic regression, architecture, activation functions, loss functions, and softmax.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --maroon-900:#3a0b13;
+    --maroon-800:#4e0f1a;
+    --maroon-700:#6e1423;
+    --maroon-600:#8a1c2e;
+    --maroon-500:#a3374a;
+    --maroon-300:#c97d8c;
+    --maroon-150:#e9cdd3;
+    --maroon-100:#f3e2e5;
+    --maroon-050:#faf2f3;
+    --ink:#271215;
+    --ink-soft:#5f474b;
+    --ink-faint:#8a7276;
+    --paper:#fffdfc;
+    --paper-dim:#fbf6f6;
+    --border:#e7d6d9;
+    --border-strong:#d8bec3;
+    --good:#2f5d3a;
+    --good-bg:#e9f1ea;
+    --bad:#7a2020;
+    --bad-bg:#f8e9e9;
+    --radius-s:4px;
+    --radius-m:10px;
+    --serif:"Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:"IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+    --maxw:740px;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth; scroll-padding-top:96px;}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+  }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  img{max-width:100%; height:auto; display:block;}
+
+  .skip-link{
+    position:absolute; left:-999px; top:0;
+    background:var(--maroon-700); color:#fff; padding:10px 16px;
+    z-index:999; border-radius:0 0 var(--radius-s) 0;
+  }
+  .skip-link:focus{left:0;}
+
+  a{color:var(--maroon-700);}
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, input:focus-visible{
+    outline:3px solid var(--maroon-500);
+    outline-offset:2px;
+  }
+
+  h1,h2,h3,h4{
+    font-family:var(--serif);
+    font-weight:600;
+    color:var(--maroon-900);
+    line-height:1.22;
+    margin:0 0 .5em;
+  }
+
+  p{margin:0 0 1.1em;}
+  ul,ol{margin:0 0 1.1em; padding-left:1.3em;}
+  li{margin-bottom:.4em;}
+
+  code, pre, kbd{font-family:var(--mono);}
+  code{
+    background:var(--maroon-050);
+    border:1px solid var(--border);
+    padding:.1em .35em;
+    border-radius:var(--radius-s);
+    font-size:.9em;
+    color:var(--maroon-800);
+  }
+
+  /* ===== Masthead ===== */
+  .masthead{
+    background:linear-gradient(165deg, var(--maroon-900) 0%, var(--maroon-700) 58%, var(--maroon-600) 100%);
+    color:#fff;
+    padding:4.5rem 1.5rem 3.5rem;
+    position:relative;
+    overflow:hidden;
+  }
+  .masthead::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 68px);
+    pointer-events:none;
+  }
+  .masthead-inner{max-width:var(--maxw); margin:0 auto; position:relative;}
+  .masthead-kicker{
+    font-family:var(--mono);
+    font-size:.78rem;
+    letter-spacing:.03em;
+    color:var(--maroon-150);
+    margin:0 0 1.1em;
+    display:flex; align-items:center; gap:.6em;
+  }
+  .masthead-kicker::before{
+    content:""; width:28px; height:1px; background:var(--maroon-300); display:inline-block;
+  }
+  .masthead h1{
+    color:#fff;
+    font-size:clamp(2.1rem, 5vw, 3.1rem);
+    margin-bottom:.32em;
+    letter-spacing:-0.01em;
+  }
+  .masthead .deck{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:1.22rem;
+    color:var(--maroon-100);
+    max-width:34em;
+    margin-bottom:1.4em;
+    font-weight:400;
+  }
+  .masthead .lede{
+    color:rgba(255,255,255,.88);
+    font-size:1.02rem;
+    max-width:38em;
+  }
+  .masthead .lede strong{color:#fff;}
+
+  /* ===== TOC nav ===== */
+  .toc-wrap{
+    position:sticky; top:0; z-index:50;
+    background:rgba(255,253,252,.93);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--border);
+  }
+  .toc{
+    max-width:var(--maxw); margin:0 auto;
+    display:flex; gap:.45rem;
+    overflow-x:auto;
+    padding:.65rem 1.5rem;
+    scrollbar-width:thin;
+  }
+  .toc::-webkit-scrollbar{height:4px;}
+  .toc::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:4px;}
+  .toc a{
+    flex:0 0 auto;
+    font-family:var(--sans);
+    font-size:.82rem;
+    font-weight:600;
+    text-decoration:none;
+    color:var(--ink-soft);
+    background:transparent;
+    border:1px solid var(--border);
+    padding:.4em .85em;
+    border-radius:999px;
+    white-space:nowrap;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .toc a:hover{border-color:var(--maroon-500); color:var(--maroon-700);}
+  .toc a.active{background:var(--maroon-700); color:#fff; border-color:var(--maroon-700);}
+
+  /* ===== Main layout ===== */
+  main{max-width:var(--maxw); margin:0 auto; padding:0 1.5rem;}
+  section{padding:3.4rem 0; border-bottom:1px solid var(--border);}
+  section:last-of-type{border-bottom:none;}
+  .section-num{
+    font-family:var(--mono); font-size:.78rem; color:var(--maroon-500);
+    margin:0 0 .6em; font-weight:600;
+  }
+  section h2{font-size:1.72rem;}
+  section h3{font-size:1.2rem; margin-top:1.6em;}
+  .intro-text{font-size:1.07rem; color:var(--ink-soft);}
+
+  figure{margin:1.6em 0;}
+  figure img{border:1px solid var(--border); border-radius:var(--radius-m);}
+  figcaption{
+    font-family:var(--mono);
+    font-size:.8rem;
+    color:var(--ink-faint);
+    margin-top:.6em;
+    line-height:1.5;
+  }
+  .fig-grid{display:grid; gap:1rem; grid-template-columns:1fr;}
+  @media(min-width:560px){.fig-grid.cols-2{grid-template-columns:1fr 1fr;}}
+
+  blockquote{
+    margin:1.6em 0;
+    padding:.2em 0 .2em 1.1em;
+    border-left:3px solid var(--maroon-500);
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:1.12rem;
+    color:var(--maroon-800);
+  }
+
+  /* ===== Callout boxes ===== */
+  .box{
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    padding:1.2rem 1.35rem;
+    margin:1.6em 0;
+    background:var(--paper-dim);
+  }
+  .box-title{
+    font-family:var(--mono);
+    font-size:.74rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    color:var(--maroon-600);
+    margin:0 0 .6em;
+    display:flex; align-items:center; gap:.5em;
+  }
+  .box-title .dot{width:7px; height:7px; border-radius:50%; background:var(--maroon-500); display:inline-block;}
+  .box p:last-child{margin-bottom:0;}
+
+  .box.insight{border-color:var(--maroon-150); background:var(--maroon-050);}
+  .box.insight .box-title{color:var(--maroon-700);}
+  .box.case{background:#fff; border:1px solid var(--border-strong);}
+  .box.note{background:var(--paper-dim);}
+
+  pre.code{
+    background:var(--maroon-900);
+    color:#f3e4e6;
+    border-radius:var(--radius-m);
+    padding:1.05rem 1.15rem;
+    overflow-x:auto;
+    margin:1.1em 0;
+    font-size:.84rem;
+    line-height:1.6;
+  }
+  pre.code .c{color:#c9a4ac;}
+  .out{
+    background:var(--ink);
+    color:#eadfe0;
+    border-radius:var(--radius-m);
+    padding:.9rem 1.1rem;
+    font-family:var(--mono);
+    font-size:.8rem;
+    overflow-x:auto;
+    margin:-0.4em 0 1.1em;
+    white-space:pre;
+  }
+  .out-label{
+    font-family:var(--mono); font-size:.72rem; color:var(--ink-faint);
+    margin:0 0 .3em; letter-spacing:.03em;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:1.2em 0; font-size:.92rem;}
+  th,td{text-align:left; padding:.55em .7em; border-bottom:1px solid var(--border);}
+  th{font-family:var(--mono); font-size:.72rem; color:var(--maroon-600); font-weight:600; letter-spacing:.02em;}
+  tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right; font-family:var(--mono);}
+
+  /* ===== Interview checkpoint ===== */
+  .checkpoint{
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-m);
+    margin:1.6em 0;
+    overflow:hidden;
+    background:#fff;
+  }
+  .checkpoint summary{
+    list-style:none;
+    cursor:pointer;
+    padding:1rem 1.2rem;
+    display:flex; gap:.8em; align-items:flex-start;
+    font-family:var(--serif);
+    font-weight:600;
+    color:var(--maroon-800);
+    background:var(--maroon-050);
+  }
+  .checkpoint summary::-webkit-details-marker{display:none;}
+  .checkpoint summary::before{
+    content:"Q";
+    flex:0 0 auto;
+    background:var(--maroon-700); color:#fff;
+    font-family:var(--mono); font-size:.72rem; font-weight:700;
+    width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    margin-top:.1em;
+  }
+  .checkpoint .chev{margin-left:auto; color:var(--maroon-500); font-size:.85rem; transition:transform .18s;}
+  .checkpoint[open] .chev{transform:rotate(180deg);}
+  .checkpoint-body{padding:1.1rem 1.2rem 1.2rem 2.8rem;}
+  .checkpoint-body .weak{color:var(--ink-faint); font-size:.9rem; margin-bottom:.9em;}
+  .checkpoint-body .weak em{font-style:normal; font-weight:600;}
+  .checkpoint-body .strong-label{
+    font-family:var(--mono); font-size:.72rem; color:var(--good); font-weight:600; letter-spacing:.02em; margin-bottom:.4em;
+  }
+
+  /* ===== Quiz ===== */
+  .quiz{
+    border:1px solid var(--maroon-150);
+    border-radius:var(--radius-m);
+    margin:1.8em 0;
+    padding:1.3rem 1.3rem 1.4rem;
+    background:linear-gradient(180deg, var(--maroon-050), #fff 70%);
+  }
+  .quiz-label{
+    font-family:var(--mono); font-size:.72rem; font-weight:700; color:var(--maroon-600);
+    letter-spacing:.03em; margin-bottom:.7em; display:block;
+  }
+  .quiz-q{font-family:var(--serif); font-size:1.05rem; color:var(--ink); margin-bottom:1em; font-weight:500;}
+  .quiz-opts{display:flex; flex-direction:column; gap:.55em; margin-bottom:0;}
+  .quiz-opt{
+    text-align:left;
+    border:1px solid var(--border-strong);
+    background:#fff;
+    border-radius:var(--radius-s);
+    padding:.65em .85em;
+    font-family:var(--sans);
+    font-size:.92rem;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .quiz-opt:hover:not(:disabled){border-color:var(--maroon-500);}
+  .quiz-opt:disabled{cursor:default;}
+  .quiz-opt.correct{border-color:var(--good); background:var(--good-bg); font-weight:600;}
+  .quiz-opt.incorrect{border-color:var(--bad); background:var(--bad-bg);}
+  .quiz-exp{
+    margin-top:1em; padding-top:1em; border-top:1px dashed var(--border-strong);
+    font-size:.92rem; color:var(--ink-soft); display:none;
+  }
+  .quiz-exp.show{display:block;}
+  .quiz-exp .verdict{font-weight:700; font-family:var(--serif); display:block; margin-bottom:.35em;}
+  .quiz-exp .verdict.ok{color:var(--good);}
+  .quiz-exp .verdict.no{color:var(--bad);}
+
+  /* ===== Neuron simulator ===== */
+  .sim{
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-m);
+    padding:1.4rem 1.4rem 1.5rem;
+    margin:1.8em 0;
+    background:#fff;
+  }
+  .sim-label{font-family:var(--mono); font-size:.72rem; font-weight:700; color:var(--maroon-600); letter-spacing:.03em; margin-bottom:1em; display:block;}
+  .sim-grid{display:grid; grid-template-columns:1fr; gap:1.6rem; align-items:center;}
+  @media(min-width:600px){.sim-grid{grid-template-columns:1fr 1fr;}}
+  .sim-controls .ctrl{margin-bottom:1.1em;}
+  .sim-controls label{
+    display:flex; justify-content:space-between; font-size:.86rem; font-weight:600; margin-bottom:.4em; color:var(--ink);
+  }
+  .sim-controls label .val{font-family:var(--mono); color:var(--maroon-700);}
+  input[type=range]{
+    width:100%; accent-color:var(--maroon-600); height:4px;
+  }
+  .sim-preset{
+    display:inline-block; font-size:.78rem; font-family:var(--mono);
+    background:var(--maroon-050); border:1px solid var(--border-strong);
+    padding:.3em .6em; border-radius:999px; cursor:pointer; margin:0 .4em .4em 0; color:var(--maroon-700);
+  }
+  .sim-preset:hover{background:var(--maroon-100);}
+  .sim-out{
+    background:var(--maroon-050);
+    border-radius:var(--radius-m);
+    padding:1.1rem;
+    text-align:center;
+  }
+  .sim-verdict{
+    font-family:var(--serif); font-weight:700; font-size:1.3rem; margin-bottom:.2em;
+  }
+  .sim-verdict.touch{color:var(--good);}
+  .sim-verdict.notouch{color:var(--bad);}
+  .sim-math{font-family:var(--mono); font-size:.8rem; color:var(--ink-soft); line-height:1.9;}
+  .sim-bar-track{height:10px; background:#fff; border:1px solid var(--border-strong); border-radius:999px; margin:.9em 0; overflow:hidden; position:relative;}
+  .sim-bar-fill{height:100%; background:linear-gradient(90deg, var(--maroon-300), var(--maroon-700)); width:50%; transition:width .12s;}
+  .sim-bar-mark{position:absolute; left:50%; top:-3px; width:2px; height:16px; background:var(--ink-faint);}
+
+  /* ===== activation explorer ===== */
+  .explorer{
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-m);
+    padding:1.4rem;
+    margin:1.8em 0;
+    background:#fff;
+  }
+  .tabs{display:flex; gap:.5em; margin-bottom:1.1em; flex-wrap:wrap;}
+  .tab-btn{
+    font-family:var(--sans); font-weight:600; font-size:.86rem;
+    border:1px solid var(--border-strong); background:#fff; color:var(--ink-soft);
+    padding:.5em 1em; border-radius:999px; cursor:pointer;
+  }
+  .tab-btn.active{background:var(--maroon-700); color:#fff; border-color:var(--maroon-700);}
+  .chart-row{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:520px){.chart-row{grid-template-columns:1fr;}}
+  .chart-box{text-align:center;}
+  .chart-box h4{
+    font-family:var(--mono); font-size:.72rem; color:var(--ink-faint); font-weight:600; margin-bottom:.5em; text-align:left;
+  }
+  svg.chart{width:100%; height:auto; background:var(--paper-dim); border-radius:var(--radius-s);}
+  .grid-line{stroke:var(--border); stroke-width:1;}
+  .axis-line{stroke:var(--ink-faint); stroke-width:1;}
+  .fn-path{fill:none; stroke:var(--maroon-700); stroke-width:2.4;}
+  .fn-dot{fill:var(--maroon-700); stroke:#fff; stroke-width:1.5;}
+  .explorer-readout{
+    margin-top:1.1em; display:flex; gap:1.6em; flex-wrap:wrap; font-family:var(--mono); font-size:.82rem; color:var(--ink-soft);
+  }
+  .explorer-readout b{color:var(--maroon-700);}
+
+  /* ===== loss explorer ===== */
+  .loss-readout{display:flex; gap:2em; flex-wrap:wrap; margin-top:1em; font-family:var(--mono); font-size:.86rem;}
+  .loss-readout .big{font-size:1.5rem; color:var(--maroon-700); font-weight:700; font-family:var(--serif);}
+
+  /* ===== diagrams ===== */
+  .diagram-wrap{margin:1.8em 0; text-align:center;}
+  svg.diagram{width:100%; height:auto; max-width:100%;}
+  .diagram-caption{font-family:var(--mono); font-size:.8rem; color:var(--ink-faint); margin-top:.7em; line-height:1.5;}
+
+  /* ===== takeaways / self-check ===== */
+  .takeaways{list-style:none; padding:0; margin:0;}
+  .takeaways li{
+    display:flex; gap:1em; padding:1rem 0; border-bottom:1px solid var(--border);
+  }
+  .takeaways li:last-child{border-bottom:none;}
+  .takeaways .n{
+    font-family:var(--serif); font-weight:700; color:var(--maroon-500); font-size:1.3rem; line-height:1; flex:0 0 auto;
+  }
+
+  .selfcheck details{
+    border-bottom:1px solid var(--border); padding:.9rem 0;
+  }
+  .selfcheck summary{
+    cursor:pointer; font-weight:600; color:var(--ink); list-style:none; display:flex; justify-content:space-between; gap:1em;
+  }
+  .selfcheck summary::-webkit-details-marker{display:none;}
+  .selfcheck summary::after{content:"+"; font-family:var(--mono); color:var(--maroon-500); font-weight:700;}
+  .selfcheck details[open] summary::after{content:"\2212";}
+  .selfcheck .ans{margin-top:.7em; color:var(--ink-soft); font-size:.94rem;}
+
+  /* ===== footer ===== */
+  footer{
+    background:var(--maroon-900); color:var(--maroon-150);
+    padding:3rem 1.5rem 2.5rem; margin-top:0;
+  }
+  .footer-inner{max-width:var(--maxw); margin:0 auto; text-align:center;}
+  footer .f-title{font-family:var(--serif); color:#fff; font-size:1.2rem; margin-bottom:.4em;}
+  footer .f-sub{font-size:.85rem; color:var(--maroon-300);}
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;
+  }
+
+  ::selection{background:var(--maroon-150); color:var(--maroon-900);}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="masthead-kicker">Neural networks, from first principles</p>
+    <h1>Neural Network 1 post read</h1>
+    <p class="deck">A dataset shaped like two spirals breaks every classical model you already know. This is the read that explains why — and builds, piece by piece, the thing that doesn't break.</p>
+    <p class="lede">By the end, you'll know exactly what a single neuron computes, why it is <strong>mathematically identical to logistic regression</strong>, how neurons stack into layers and networks, and how a network scores its own predictions. What's intentionally left for later: the training process that actually finds the weights.</p>
+  </div>
+</header>
+
+<div class="toc-wrap">
+  <nav class="toc" aria-label="Jump to section" id="tocNav">
+    <a href="#spiral">The spiral problem</a>
+    <a href="#everyday">Where it shows up</a>
+    <a href="#neuron">The single neuron</a>
+    <a href="#logistic">Neuron = logistic regression</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#activations">Activation functions</a>
+    <a href="#loss">Loss functions</a>
+    <a href="#softmax">Softmax &amp; multi-class</a>
+    <a href="#takeaways">Takeaways</a>
+  </nav>
+</div>
+
+<main id="main">
+
+  <!-- ============ SECTION 1: SPIRAL ============ -->
+  <section id="spiral" aria-labelledby="spiral-h">
+    <p class="section-num">01 — Introduction</p>
+    <h2 id="spiral-h">A dataset that breaks every model you know</h2>
+    <p class="intro-text">Picture two spirals wound around each other, one class per arm. Before looking at any output, it's worth guessing: which of these would draw a clean boundary between the two arms — Logistic Regression, KNN, a Decision Tree, a Linear SVM, all of them, or none of them? Most people expect a "flexible, non-linear" method like KNN or a Decision Tree to handle it easily. The data says otherwise.</p>
+
+    <figure>
+      <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/405/original/29-1.png?1790679191" alt="Scatter plot of two interleaved spiral-shaped clusters of points, one orange and one blue, winding around a shared center.">
+      <figcaption>The spiral dataset — one class per arm, generated with controlled noise so the arms stay distinguishable but imperfect.</figcaption>
+    </figure>
+
+    <p>Four classical models were fit to this exact data, using the exact same features — no special preprocessing for any of them.</p>
+
+    <figure>
+      <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/406/original/29-2.png?1790679227" alt="Four decision boundary plots side by side for Logistic Regression, K-Nearest Neighbors, Decision Tree, and Linear SVM on the spiral dataset, each shown with its training accuracy.">
+      <figcaption>Classical ML vs. the spiral. Decision regions (shaded) against the actual points.</figcaption>
+    </figure>
+
+    <p>Logistic Regression and the Linear SVM essentially give up — their boundaries are close to a straight line, with train accuracy around 0.59 and 0.58 on a two-class problem, barely above a coin flip. A depth-limited Decision Tree does a little better at roughly 0.65, carving the space into blocky, axis-aligned regions that still can't trace a curve. KNN is the outlier: it reaches about 0.99 train accuracy, but only because it stores every training point and lets nearby ones vote — its boundary is ragged and patchy, following the arms by memorizing individual points rather than learning a spiral-shaped rule.</p>
+
+    <div class="box insight">
+      <p class="box-title"><span class="dot"></span>Two different failure modes</p>
+      <p>Three of the four models are <strong>underfitting</strong>: their decision boundaries are too simple to follow the spiral, so they struggle even on the data they were trained on. KNN isn't underfitting, but it isn't really "learning the spiral" either — it's closer to memorization. Whether a boundary looks neat is a separate question from whether it actually captured the shape of the data, and it's worth keeping those two apart.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 01</span>
+      <p class="quiz-q">Logistic Regression and Linear SVM scored only about 0.59 and 0.58 train accuracy on this two-class problem, and the Decision Tree about 0.65. What does this best tell us about these three models on this data?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">They are overfitting: they memorized the training points, so they would score even lower on new data than their train accuracy suggests.</button>
+        <button class="quiz-opt" data-correct="true">They are underfitting: their decision boundaries are too simple to follow the spiral, so they struggle even on the data they were trained on.</button>
+        <button class="quiz-opt" data-correct="false">They are performing well, since any accuracy above 0.5 on two balanced classes means the spiral pattern was captured.</button>
+        <button class="quiz-opt" data-correct="false">Their low train accuracy is caused by too little training data, and more points would fix it.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>A model that scores close to chance (0.5 for two balanced classes) on its <em>own</em> training data is too simple for the pattern — a straight line or a few axis-aligned splits cannot trace a spiral. Overfitting would show the opposite signature: high train accuracy with a noticeably lower score on unseen data. Scores of 0.58–0.65 are barely above chance, not a sign of a captured pattern, and the issue here is the model's shape, not the amount of data.</p>
+      </div>
+    </div>
+
+    <p>Now the reveal. Same data, same features — a small neural network (two hidden layers, ReLU activation) fit to the identical spiral.</p>
+
+    <figure>
+      <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/407/original/29-3.png?1790679263" alt="Decision boundary plot of a neural network on the spiral dataset, with a curved boundary that follows the shape of both spiral arms, labeled with training accuracy of 0.99.">
+      <figcaption>Neural network train accuracy: 0.987 — comparable in raw number to KNN, but arrived at differently.</figcaption>
+    </figure>
+
+    <p>The network's boundary isn't perfectly smooth either, and its train accuracy lands in the same range as KNN's. The difference that matters is <em>what the model is doing</em> to get there: instead of storing every point, it learns a compact set of weights that bend the boundary along the arms. Some models might close the gap with heavy feature engineering, but the network learns the relevant structure directly from the raw coordinates.</p>
+
+    <p>The rest of this read doesn't build this network's training process — that's its own subject. It builds every piece that makes the network <em>capable</em> of this boundary in the first place: what a single neuron computes, how neurons stack into layers, what an activation function does, and how we'd score whether a prediction is good or bad. That's the machine. How it teaches itself is a separate story.</p>
+  </section>
+
+  <!-- ============ SECTION 2: EVERYDAY ============ -->
+  <section id="everyday" aria-labelledby="everyday-h">
+    <p class="section-num">02</p>
+    <h2 id="everyday-h">Where neural networks already sit</h2>
+    <p>Before opening up the mechanics, it's worth noticing how much of this is already running quietly in the background of ordinary tools:</p>
+    <ul>
+      <li><strong>Perception</strong> — face unlock, "find pictures of my dog" photo search, voice assistants</li>
+      <li><strong>Generation</strong> — chat assistants, AI coding copilots, image and video generation tools</li>
+      <li><strong>Decisioning at scale</strong> — ad and feed ranking, fraud detection, credit risk scoring, recommendation engines</li>
+      <li><strong>Agents</strong> — tools that plan multi-step actions (browsing, booking, coding tasks) rather than answering once, built on the same neurons covered below, just wired up and prompted differently</li>
+    </ul>
+    <div class="box note">
+      <p class="box-title"><span class="dot"></span>Why not just do more feature engineering?</p>
+      <p>Classical ML can sometimes be pushed further with hand-built features. The reason the field moved to neural networks instead isn't that they're "smarter" — it's that feature engineering doesn't scale to raw pixels, audio, or free-form text. You'd need to hand-design millions of features. Neural networks learn the features themselves, directly from raw data. That scalability is the actual reason they won out.</p>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3: SINGLE NEURON ============ -->
+  <section id="neuron" aria-labelledby="neuron-h">
+    <p class="section-num">03 — Core concept</p>
+    <h2 id="neuron-h">The single neuron</h2>
+    <p>A biological neuron receives signals through dendrites, combines them in the cell body, and — if the combined signal is strong enough — fires a signal down its axon to the next neuron. An artificial neuron is a deliberately simplified caricature of that idea: it doesn't model biology accurately, it borrows the <em>shape</em> of the process — weighted inputs, combine, decide.</p>
+
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 640 230" role="img" aria-labelledby="neurondiagram-title neurondiagram-desc">
+        <title id="neurondiagram-title">Diagram of an artificial neuron</title>
+        <desc id="neurondiagram-desc">Two inputs, temperature and familiarity, each multiplied by a weight and fed into a summation node along with a bias, then passed through a sigmoid activation function to produce an output probability.</desc>
+        <!-- inputs -->
+        <circle cx="60" cy="68" r="22" fill="#fff" stroke="#8a1c2e" stroke-width="2"/>
+        <text x="60" y="73" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#3a0b13">temp</text>
+        <circle cx="60" cy="166" r="22" fill="#fff" stroke="#8a1c2e" stroke-width="2"/>
+        <text x="60" y="171" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#3a0b13">famil.</text>
+
+        <!-- weighted lines -->
+        <line x1="82" y1="68" x2="268" y2="112" stroke="#6e1423" stroke-width="2.4"/>
+        <text x="150" y="80" font-family="IBM Plex Mono, monospace" font-size="11" fill="#6e1423">w₁ = −2.0</text>
+        <line x1="82" y1="166" x2="268" y2="124" stroke="#a3374a" stroke-width="2.4"/>
+        <text x="150" y="162" font-family="IBM Plex Mono, monospace" font-size="11" fill="#a3374a">w₂ = +1.5</text>
+
+        <!-- bias -->
+        <circle cx="270" cy="40" r="16" fill="#f3e2e5" stroke="#c97d8c" stroke-width="1.5"/>
+        <text x="270" y="44" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6e1423">b</text>
+        <line x1="283" y1="52" x2="300" y2="90" stroke="#c97d8c" stroke-width="2" stroke-dasharray="3 3"/>
+        <text x="300" y="38" font-family="IBM Plex Mono, monospace" font-size="11" fill="#8a7276">bias = +0.5</text>
+
+        <!-- sum node -->
+        <circle cx="320" cy="118" r="32" fill="#4e0f1a"/>
+        <text x="320" y="125" text-anchor="middle" font-family="Spectral, serif" font-size="20" fill="#fff">&#931;</text>
+        <text x="320" y="166" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">z = w·x + b</text>
+
+        <!-- arrow to activation -->
+        <line x1="352" y1="118" x2="420" y2="118" stroke="#271215" stroke-width="2"/>
+        <polygon points="420,118 410,113 410,123" fill="#271215"/>
+
+        <!-- activation box -->
+        <rect x="422" y="85" width="110" height="66" rx="8" fill="#fff" stroke="#8a1c2e" stroke-width="2"/>
+        <path d="M 432 128 C 450 128 450 98 468 98 C 486 98 486 128 504 128 C 512 128 516 128 522 128" fill="none" stroke="#6e1423" stroke-width="2.2"/>
+        <text x="477" y="68" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">sigmoid</text>
+
+        <!-- arrow to output -->
+        <line x1="532" y1="118" x2="580" y2="118" stroke="#271215" stroke-width="2"/>
+        <polygon points="580,118 570,113 570,123" fill="#271215"/>
+        <text x="610" y="113" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#271215">P</text>
+        <text x="610" y="128" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8a7276">(touch)</text>
+      </svg>
+      <p class="diagram-caption">Two inputs, each scaled by a weight, summed with a bias, then squashed by sigmoid into a 0–1 probability.</p>
+    </div>
+
+    <h3>The "should I touch this?" neuron</h3>
+    <p>A simple, concrete example: deciding whether to touch something, based on its temperature and how familiar it is. Heat should make a neuron <em>more</em> cautious; familiarity should make it <em>less</em> cautious. That's exactly what the weights below encode.</p>
+    <ul>
+      <li><strong>Temperature weight = −2.0</strong> — negative, because more heat should push down willingness to touch</li>
+      <li><strong>Familiarity weight = +1.5</strong> — positive, because more familiarity should push up willingness to touch</li>
+      <li><strong>Bias = +0.5</strong> — the default caution level before seeing any input at all</li>
+    </ul>
+    <p>The computation is two steps: a weighted sum, <code>z = w·x + b</code>, then an activation function that turns that raw number into a 0–1 probability. Here, sigmoid: <code>σ(z) = 1 / (1 + e⁻ᶻ)</code>.</p>
+
+    <pre class="code"><span class="c"># A single artificial neuron: weighted sum, then activation</span>
+class SimpleNeuron:
+    def __init__(self, weights, bias):
+        self.weights = np.array(weights, dtype=float)
+        self.bias = float(bias)
+
+    def sigmoid(self, z):
+        return 1 / (1 + np.exp(-z))
+
+    def process(self, inputs):
+        z = np.dot(self.weights, inputs) + self.bias   <span class="c"># weighted sum</span>
+        return self.sigmoid(z), z                        <span class="c"># activation</span></pre>
+
+    <p>Try it below — this is the same neuron, computing live as you move the sliders.</p>
+
+    <div class="sim">
+      <span class="sim-label">Interactive — the "should I touch this?" neuron</span>
+      <div class="sim-grid">
+        <div class="sim-controls">
+          <div class="ctrl">
+            <label for="simTemp">Temperature <span class="val" id="simTempVal">0.90</span></label>
+            <input type="range" id="simTemp" min="0" max="1" step="0.01" value="0.90">
+          </div>
+          <div class="ctrl">
+            <label for="simFam">Familiarity <span class="val" id="simFamVal">0.20</span></label>
+            <input type="range" id="simFam" min="0" max="1" step="0.01" value="0.20">
+          </div>
+          <div class="ctrl">
+            <label for="simW1">Temperature weight (w₁) <span class="val" id="simW1Val">−2.00</span></label>
+            <input type="range" id="simW1" min="-3" max="3" step="0.1" value="-2.0">
+          </div>
+          <div class="ctrl">
+            <label for="simW2">Familiarity weight (w₂) <span class="val" id="simW2Val">+1.50</span></label>
+            <input type="range" id="simW2" min="-3" max="3" step="0.1" value="1.5">
+          </div>
+          <div class="ctrl">
+            <label for="simB">Bias (b) <span class="val" id="simBVal">+0.50</span></label>
+            <input type="range" id="simB" min="-5" max="5" step="0.1" value="0.5">
+          </div>
+          <div>
+            <button type="button" class="sim-preset" data-preset="iron">Hot iron</button>
+            <button type="button" class="sim-preset" data-preset="phone">Your phone</button>
+            <button type="button" class="sim-preset" data-preset="mug">Warm coffee mug</button>
+            <button type="button" class="sim-preset" data-preset="flip">Flip temp weight sign</button>
+          </div>
+        </div>
+        <div class="sim-out">
+          <div class="sim-verdict" id="simVerdict">—</div>
+          <div class="sim-bar-track"><div class="sim-bar-fill" id="simBar"></div><div class="sim-bar-mark"></div></div>
+          <div class="sim-math" id="simMath"></div>
+        </div>
+      </div>
+    </div>
+
+    <p>With the original weights, a hot, unfamiliar object (temperature 0.9, familiarity 0.2) lands at z = −1.00 and P(touch) ≈ 0.27 — don't touch. A familiar object like your phone (temperature 0.3, familiarity 0.9) lands at z = 1.25 and P(touch) ≈ 0.78 — safe. A warm coffee mug sits close to the 0.5 line at P(touch) ≈ 0.59 — the neuron is genuinely less confident there, and its output reflects that instead of forcing a hard yes or no.</p>
+
+    <div class="box case">
+      <p class="box-title"><span class="dot"></span>Field note — a silent sign-flip bug</p>
+      <p>Try the "flip temp weight sign" preset above: changing the temperature weight from −2.0 to +2.0 makes heat <em>increase</em> willingness to touch — the model now says "touch the hot iron," the exact opposite of the intended behavior. In production this is precisely the kind of bug that doesn't crash anything — a mislabeled feature, a flipped class encoding — it just quietly produces confidently wrong predictions.</p>
+    </div>
+
+    <details class="checkpoint">
+      <summary>What does the bias term actually do, and what would happen without it? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "It's just another number added to the weighted sum."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>Bias shifts the decision boundary independently of the inputs — it's the neuron's baseline tendency before it has seen any evidence. Without a bias, every neuron's decision boundary would be forced to pass through the origin (all-zero input), which is a strong, usually unrealistic, constraint. A positive bias makes a neuron more trigger-happy by default; a negative bias makes it more conservative — exactly like the +0.5 "default caution level" above.</p>
+      </div>
+    </details>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 02</span>
+      <p class="quiz-q">In the "should I touch this?" neuron, suppose the weights stay the same but the bias changes from +0.5 to −5.0. What is the most likely effect on the neuron's decisions?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="true">The neuron becomes far more conservative, needing much stronger evidence before it decides to fire.</button>
+        <button class="quiz-opt" data-correct="false">The neuron's output becomes unpredictable, since a large negative bias destabilizes how sigmoid behaves.</button>
+        <button class="quiz-opt" data-correct="false">The neuron will always output exactly zero, since sigmoid returns zero whenever bias is negative.</button>
+        <button class="quiz-opt" data-correct="false">The bias barely matters here, since weighted inputs dominate the decision far more than bias does.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>A very negative bias shifts every weighted sum down before sigmoid is applied, so the neuron now needs much stronger positive evidence to cross the 0.5 threshold — more cautious, not random. Sigmoid approaches 0 only in the limit and never outputs it exactly, and bias directly sets the neuron's default tendency, so it's far from irrelevant.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 4: NEURON = LOGISTIC REGRESSION ============ -->
+  <section id="logistic" aria-labelledby="logistic-h">
+    <p class="section-num">04 — The core reveal</p>
+    <h2 id="logistic-h">A neuron <em>is</em> logistic regression</h2>
+    <p>Logistic Regression — the classical model most people learn long before neural networks — and this single neuron feel like they belong to different worlds: "the old, simple thing" versus "the new, advanced thing." That gap closes with a direct comparison, not a claim.</p>
+
+    <p>Scikit-learn's <code>LogisticRegression</code> was trained on a synthetic classification dataset, which produced a set of learned weights and a bias. Those exact learned numbers — nothing hand-picked — were then dropped straight into <code>SimpleNeuron</code>.</p>
+
+    <p class="out-label">Output</p>
+    <div class="out">sklearn's LogisticRegression learned:  weights=[ 2.967 -2.019],  bias=-0.9027
+
+Comparing predictions on 5 real data points:
+  sklearn: 0.004439   our neuron: 0.004439   match: True
+  sklearn: 0.000851   our neuron: 0.000851   match: True
+  sklearn: 0.000125   our neuron: 0.000125   match: True
+  sklearn: 0.985624   our neuron: 0.985624   match: True
+  sklearn: 0.001519   our neuron: 0.001519   match: True</div>
+
+    <p>The numbers match to six decimal places, because they are, mathematically, the exact same computation. <code>LogisticRegression</code> computes <code>z = w·x + b</code> then applies sigmoid — which is exactly what <code>SimpleNeuron.process()</code> does.</p>
+
+    <div class="box insight">
+      <p class="box-title"><span class="dot"></span>What this actually means</p>
+      <p>Logistic regression isn't a competitor to neural networks — it <strong>is</strong> a neural network with exactly one neuron and no hidden layers. Everything from here forward is about what happens when more than one of these gets stacked, in more than one layer. The "power" of a deep network doesn't come from changing the atomic unit; it comes from composing many of them.</p>
+    </div>
+
+    <details class="checkpoint">
+      <summary>How is a neural network related to logistic regression? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "Neural networks are more powerful, more complex versions of logistic regression."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>A single neuron with a sigmoid activation performs <em>exactly</em> the same computation as logistic regression: a linear combination of inputs passed through a sigmoid. A neural network generalizes this by stacking many such units across layers, which lets it learn non-linear decision boundaries — something a lone logistic regression unit fundamentally cannot do, no matter how it's trained.</p>
+      </div>
+    </details>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 03</span>
+      <p class="quiz-q">Since a single neuron with a sigmoid activation is mathematically identical to logistic regression, what does this imply about a network made of many such neurons stacked across several layers?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">A multi-layer network is still fundamentally restricted to linear decision boundaries, exactly like a single neuron.</button>
+        <button class="quiz-opt" data-correct="false">A multi-layer network needs a completely different computation at each neuron, unrelated to logistic regression's math.</button>
+        <button class="quiz-opt" data-correct="false">Because each neuron is "just" logistic regression, stacking more of them adds no real benefit for classification.</button>
+        <button class="quiz-opt" data-correct="true">A multi-layer network's extra power comes from composing many logistic-regression-like units into non-linear boundaries a single unit can't reach.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>Each neuron still performs exactly the same computation as logistic regression, but stacking many of them across layers lets the network compose these simple units into far more complex, non-linear boundaries — exactly what let the network succeed on the spiral where one logistic regression could not. The added depth, not a different atomic computation, is why networks outperform a lone neuron.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 5: ARCHITECTURE ============ -->
+  <section id="architecture" aria-labelledby="architecture-h">
+    <p class="section-num">05 — Core concept</p>
+    <h2 id="architecture-h">From neuron to network: architecture</h2>
+    <p>If one neuron is logistic regression, what does a collection of them buy you?</p>
+    <ul>
+      <li><strong>One neuron, one output</strong> → a binary decision (touch / don't touch)</li>
+      <li><strong>Many neurons in one layer, each seeing the same inputs</strong> → each neuron can detect a different pattern</li>
+      <li><strong>Multiple layers</strong> → each layer transforms the data so the next layer's job gets easier — this is what actually lets a network bend a straight-line boundary into a spiral-shaped one</li>
+    </ul>
+
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 640 300" role="img" aria-labelledby="archdiagram-title archdiagram-desc">
+        <title id="archdiagram-title">Diagram of a multi-layer neural network</title>
+        <desc id="archdiagram-desc">An input layer of two nodes connects fully to a hidden layer of four nodes, which connects fully to a second hidden layer of three nodes, which connects to an output layer of three nodes, one per class. Connection line thickness represents weight magnitude and color represents the sign of the weight.</desc>
+        <g id="archLines"></g>
+        <g id="archNodes"></g>
+        <text x="60" y="285" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">input</text>
+        <text x="235" y="285" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">hidden 1</text>
+        <text x="410" y="285" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">hidden 2</text>
+        <text x="580" y="285" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#8a7276">output (per class)</text>
+      </svg>
+      <p class="diagram-caption">Line thickness ≈ weight magnitude · maroon = positive weight, pale pink = negative weight — the same idea as the temperature and familiarity weights above, just many more of them.</p>
+    </div>
+
+    <p>This is the same visual language used by <a href="https://playground.tensorflow.org/#activation=tanh&amp;batchSize=10&amp;dataset=spiral&amp;regDataset=reg-plane&amp;learningRate=0.03&amp;regularizationRate=0&amp;noise=0&amp;networkShape=4,2&amp;seed=0.60479&amp;showTestData=false&amp;discretize=false&amp;percTrainData=50&amp;x=true&amp;y=true&amp;xTimesY=false&amp;xSquared=false&amp;ySquared=false&amp;cosX=false&amp;sinX=false&amp;cosY=false&amp;sinY=false&amp;collectStats=false&amp;problem=classification&amp;initZero=false&amp;hideText=false" target="_blank" rel="noopener">TensorFlow Playground</a>, a live tool for watching a network bend a boundary around the spiral dataset in real time: line thickness shows weight magnitude, and blue vs. orange lines show positive vs. negative weight.</p>
+
+    <div class="fig-grid cols-2">
+      <figure>
+        <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/412/original/29-5.png?1790679981" alt="Screenshot of TensorFlow Playground showing a small neural network with weighted connections drawn as colored lines of varying thickness, fitting the spiral dataset.">
+      </figure>
+      <figure>
+        <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/418/original/29-6.png?1790680550" alt="A second TensorFlow Playground screenshot, showing a more developed network and decision boundary on the spiral dataset.">
+      </figure>
+    </div>
+
+    <div class="box note">
+      <p class="box-title"><span class="dot"></span>Industry note — size has a cost</p>
+      <p>Every extra neuron and every extra layer is more weights to store, more multiplications per prediction, and — at inference time in production — more latency and more GPU or memory cost. "Just add more neurons" is never a free decision; architecture size is a real engineering trade-off between accuracy and cost, long before training even enters the picture.</p>
+    </div>
+
+    <details class="checkpoint">
+      <summary>Why use matrix multiplication instead of loops when implementing a network layer? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "It's faster."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>It's faster specifically because it maps onto vectorized, hardware-accelerated linear algebra — BLAS on CPU, and GPU cores at massive scale — which a nested loop over every neuron and every sample simply can't use. It's not a minor speed tweak; it's the difference between a model that trains in minutes versus one that's computationally infeasible at real dataset sizes.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ SECTION 6: ACTIVATIONS ============ -->
+  <section id="activations" aria-labelledby="activations-h">
+    <p class="section-num">06 — Core concept</p>
+    <h2 id="activations-h">Why depth needs activation functions</h2>
+    <p>A natural assumption: stack ten layers and skip the activation function at every one — just raw weighted sums feeding into more weighted sums — and surely that's far more powerful than a single layer. It isn't. A stack of purely linear layers collapses mathematically into a <em>single</em> linear layer, because composing linear functions just produces another linear function. Without a non-linear activation function in between, depth buys nothing. Activation functions are what let depth actually matter.</p>
+
+    <div class="explorer">
+      <span class="sim-label">Interactive — sigmoid, tanh, and ReLU</span>
+      <div class="tabs" role="tablist" aria-label="Choose an activation function">
+        <button class="tab-btn active" data-fn="sigmoid" role="tab" aria-selected="true">Sigmoid</button>
+        <button class="tab-btn" data-fn="tanh" role="tab" aria-selected="false">Tanh</button>
+        <button class="tab-btn" data-fn="relu" role="tab" aria-selected="false">ReLU</button>
+      </div>
+      <div class="chart-row">
+        <div class="chart-box">
+          <h4 id="fnChartLabel">f(z)</h4>
+          <svg class="chart" id="fnChart" viewBox="0 0 300 160" role="img" aria-labelledby="fnChartLabel"></svg>
+        </div>
+        <div class="chart-box">
+          <h4 id="dChartLabel">f′(z) — the gradient</h4>
+          <svg class="chart" id="dChart" viewBox="0 0 300 160" role="img" aria-labelledby="dChartLabel"></svg>
+        </div>
+      </div>
+      <div class="ctrl" style="margin-top:1.1em;">
+        <label for="actZ">z <span class="val" id="actZVal">6.00</span></label>
+        <input type="range" id="actZ" min="-6" max="6" step="0.05" value="6">
+      </div>
+      <div class="explorer-readout">
+        <span>f(z) = <b id="fOut">—</b></span>
+        <span>f′(z) = <b id="fdOut">—</b></span>
+      </div>
+    </div>
+
+    <p>Move the slider to z = 6 for sigmoid or tanh: the gradient flattens to nearly zero — <strong>saturation</strong>. Once |z| is large, these functions' output barely changes no matter how much z changes. ReLU keeps a constant slope of 1 for any positive input and never saturates on that side. Measured directly: sigmoid's gradient at z = 6 is about 0.0025, tanh's is about 0.000025, and ReLU's is exactly 1.</p>
+
+    <figure>
+      <img src="https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/243/420/original/29-7.png?1790680597" alt="Six small line charts: the top row shows sigmoid, tanh, and ReLU functions; the bottom row shows their derivatives, with sigmoid and tanh flattening near zero at the extremes while ReLU's derivative stays flat at 1 for positive input.">
+      <figcaption>Sigmoid, tanh, and ReLU (top) with their gradients (bottom) across z from −6 to 6.</figcaption>
+    </figure>
+
+    <div class="box note">
+      <p class="box-title"><span class="dot"></span>Misconception check</p>
+      <p>"Sigmoid is outdated, never use it" isn't quite right. Sigmoid is still exactly the right choice for a <em>binary output</em> neuron — its 0-to-1 range is meaningful there. The point is that because it saturates, it's not the usual default for <em>hidden</em> layers.</p>
+    </div>
+
+    <p>Modern large models — including transformer-based LLMs — mostly don't use plain ReLU anymore either; variants like GELU and SwiGLU are more common. The underlying motivation is related to the same saturation problem: avoiding flat-slope regions that slow learning. The specific variants aren't essential to memorize here.</p>
+
+    <details class="checkpoint">
+      <summary>Building a network with many hidden layers — sigmoid or ReLU, and why? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "ReLU, because it's the modern default."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>ReLU, because its slope is a constant 1 for any positive input — it doesn't saturate — whereas sigmoid flattens out (slope near 0) for large positive or negative inputs, and it's also cheaper to compute. ReLU has its own failure mode (dead neurons, when inputs are always negative), but it's usually the more manageable trade-off for hidden layers. Sigmoid remains the right choice for a binary output neuron.</p>
+      </div>
+    </details>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 04</span>
+      <p class="quiz-q">At z = 6, the measured gradients were: sigmoid about 0.0025, tanh about 0.000025, and ReLU exactly 1. Which conclusion is best supported by these numbers?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="true">Sigmoid and tanh are saturated at large z, so their output barely responds to changes in z, while ReLU's slope stays constant for positive z.</button>
+        <button class="quiz-opt" data-correct="false">ReLU is saturated at large positive z, while sigmoid and tanh keep a steady slope.</button>
+        <button class="quiz-opt" data-correct="false">Tanh is the best choice for hidden layers because its gradient is the smallest at z = 6.</button>
+        <button class="quiz-opt" data-correct="false">All three activations behave the same at large z and differ only near z = 0.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>A gradient of 0.0025 (sigmoid) or 0.000025 (tanh) means the curve is almost flat at z = 6 — that's what saturation means. ReLU's slope is exactly 1 for any positive input, so it doesn't saturate there. A tiny gradient is not an advantage, and the numbers clearly differ across the three functions at large z.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 7: LOSS ============ -->
+  <section id="loss" aria-labelledby="loss-h">
+    <p class="section-num">07 — Core concept</p>
+    <h2 id="loss-h">Loss functions: scoring the predictions</h2>
+    <p>Everything so far builds a model that makes <em>predictions</em>. Loss functions are how those predictions get scored — the "report card" that training will later try to minimize.</p>
+
+    <h3>Binary cross-entropy (log loss)</h3>
+    <pre class="code">def binary_cross_entropy(y_true, y_pred, eps=1e-12):
+    y_pred = np.clip(y_pred, eps, 1 - eps)   <span class="c"># guard against log(0)</span>
+    return -(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))</pre>
+
+    <p class="out-label">Output — scenario: is this email spam? (1 = spam)</p>
+    <div class="out">Good prediction  (true=1, pred=0.90): loss = 0.1054
+Bad  prediction  (true=1, pred=0.10): loss = 2.3026</div>
+
+    <p>The bad prediction's loss is roughly 20× larger than the good one's — even though the predicted probability only moved from 90% confident-correct to 10% confident-correct, not a 20× change in "wrongness." That's intentional: a model that's <em>confidently</em> wrong should be penalized far more than one that's mildly wrong, because confidently-wrong predictions are the dangerous ones in production — think of a model confidently approving a fraudulent transaction.</p>
+
+    <div class="explorer">
+      <span class="sim-label">Interactive — the log loss curve</span>
+      <p style="margin-bottom:.6em; font-size:.9rem; color:var(--ink-soft);">True label = spam (1). Drag to see how loss responds to the predicted probability of spam.</p>
+      <svg class="chart" id="lossChart" viewBox="0 0 560 190" role="img" aria-label="Line chart of binary cross-entropy loss against predicted probability, rising steeply as predicted probability approaches zero"></svg>
+      <div class="ctrl" style="margin-top:.8em;">
+        <label for="lossP">Predicted P(spam) <span class="val" id="lossPVal">0.90</span></label>
+        <input type="range" id="lossP" min="0.01" max="0.99" step="0.01" value="0.90">
+      </div>
+      <div class="loss-readout">
+        <span>Loss = <span class="big" id="lossOut">0.105</span></span>
+      </div>
+    </div>
+
+    <div class="box note">
+      <p class="box-title"><span class="dot"></span>Industry note — class imbalance</p>
+      <p>If 99% of training emails are "not spam," a model can reach 99% accuracy by <em>always</em> predicting "not spam" — and ordinary cross-entropy loss will happily reward that. This is why production classifiers often use a <em>weighted</em> cross-entropy loss that penalizes mistakes on the rare class more heavily. It comes up constantly in fraud, churn, and medical-screening models.</p>
+    </div>
+
+    <details class="checkpoint">
+      <summary>Why cross-entropy instead of Mean Squared Error for classification? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "Because that's the standard choice for classification."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>MSE treats a prediction of 0.4 vs. a true label of 1 the same way regardless of how confidently wrong it is, and its gradient with a sigmoid or softmax output can shrink badly when predictions are very wrong — a flat region of the squared-error curve combined with a saturated activation — slowing learning exactly when it should be fastest. Cross-entropy's gradient stays well-behaved and proportionally large for confidently wrong predictions, and it directly corresponds to maximizing the likelihood of the true labels under the model — the actual objective in classification.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ SECTION 8: SOFTMAX / MULTI-CLASS ============ -->
+  <section id="softmax" aria-labelledby="softmax-h">
+    <p class="section-num">08 — Core concept</p>
+    <h2 id="softmax-h">Softmax and multi-class networks</h2>
+    <p>Binary cross-entropy scores a yes/no prediction. For more than two classes, raw output scores (logits) need to become probabilities that sum to 1 — that's softmax's job: <code>softmax(z)ᵢ = exp(zᵢ) / Σ exp(zⱼ)</code>.</p>
+
+    <h3>The max-subtraction trick isn't optional</h3>
+    <pre class="code">z_large = np.array([1000.0, 1001.0, 1002.0])   <span class="c"># realistic raw scores can get large</span>
+
+<span class="c"># without the stability trick: exp(1000) overflows to inf, inf/inf becomes nan</span>
+unstable = np.exp(z_large) / np.sum(np.exp(z_large))
+
+def softmax(z):
+    exp_z = np.exp(z - np.max(z))    <span class="c"># subtract the max BEFORE exponentiating</span>
+    return exp_z / np.sum(exp_z)</pre>
+
+    <p class="out-label">Output</p>
+    <div class="out">Without the stability trick:
+  [nan nan nan]  &lt;- exp(1000) overflows to inf, inf/inf becomes nan
+
+With the stability trick:
+  [0.09003057 0.24472847 0.66524096]</div>
+
+    <div class="box note">
+      <p class="box-title"><span class="dot"></span>Misconception check</p>
+      <p>Subtracting the max from every logit before exponentiating doesn't change the math — it produces mathematically identical probabilities, because the shift cancels out in the ratio. It's purely a numerical-stability fix, not an approximation.</p>
+    </div>
+
+    <details class="checkpoint">
+      <summary>Why subtract the max value before exponentiating in softmax? <span class="chev">▾</span></summary>
+      <div class="checkpoint-body">
+        <p class="weak"><em>Common weak answer:</em> "It's a best practice."</p>
+        <p class="strong-label">Stronger answer</p>
+        <p>Raw logits can be large in either direction. <code>exp()</code> of a large positive number overflows to infinity in floating point, and <code>inf / inf</code> becomes <code>NaN</code> — silently corrupting every downstream computation. Subtracting the max shifts the largest logit to exactly 0 before exponentiating, bounding every <code>exp()</code> output to at most 1, without changing the final probabilities at all, since the shift cancels out in the numerator and denominator.</p>
+      </div>
+    </details>
+
+    <h3>Cross-entropy loss, multi-class</h3>
+    <p>With probabilities in hand, cross-entropy scores each sample against its true label:</p>
+    <table>
+      <thead><tr><th>Sample</th><th>Probabilities (CAT, DOG, BIRD)</th><th>True</th><th>Predicted</th><th class="num">Loss</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0.659, 0.242, 0.099</td><td>CAT</td><td>CAT</td><td class="num">0.4170</td></tr>
+        <tr><td>2</td><td>0.107, 0.787, 0.107</td><td>DOG</td><td>DOG</td><td class="num">0.2395</td></tr>
+        <tr><td>3</td><td>0.333, 0.333, 0.333</td><td>BIRD</td><td>CAT</td><td class="num">1.0986</td></tr>
+      </tbody>
+    </table>
+    <p style="font-family:var(--mono); font-size:.86rem; color:var(--ink-soft);">Average batch loss: 0.5851</p>
+
+    <p>A full multi-class, multi-layer network is the same stack as before: hidden layers, each with weights, a bias, and a non-linear activation such as ReLU, transform the inputs, and the output layer has one neuron per class. Those raw output scores go through softmax to become class probabilities that sum to 1, and cross-entropy scores them against the true label.</p>
+
+    <div class="box case">
+      <p class="box-title"><span class="dot"></span>Field note — a confidently wrong AI-generated helper</p>
+      <p>An AI coding assistant was asked to write a NumPy class for a 3-class network layer with a softmax output. It produced a <code>forward()</code> method that called <code>self.softmax(Z)</code> — but never defined a <code>softmax</code> method anywhere in the class. Running it raised <code>AttributeError: 'MultiClassNetworkAI' object has no attribute 'softmax'</code>. A very common real-world failure mode for AI coding assistants: confidently calling a helper that doesn't exist. The fix is exactly the softmax function already covered — adding it, with the max-subtraction trick, resolves the error cleanly. It's a reminder to verify generated code by actually running it, rather than trusting a plausible-looking method call.</p>
+    </div>
+
+    <pre class="code"><span class="c"># The fixed layer — softmax defined, with the stability trick</span>
+class MultiClassNetwork:
+    def __init__(self, n_features=2, n_classes=3):
+        self.W = np.random.randn(n_features, n_classes) * 0.01
+        self.b = np.zeros((1, n_classes))
+
+    def softmax(self, Z):
+        exp_Z = np.exp(Z - np.max(Z, axis=1, keepdims=True))
+        return exp_Z / np.sum(exp_Z, axis=1, keepdims=True)
+
+    def forward(self, X):
+        Z = np.dot(X, self.W) + self.b     <span class="c"># ALL neurons, ALL samples, one matrix multiply</span>
+        return self.softmax(Z)</pre>
+
+    <p>That one line, <code>Z = np.dot(X, self.W) + self.b</code>, is doing what would otherwise require a nested loop over every neuron and every sample. Matrix multiplication isn't a flex — it's literally "many neurons, all at once."</p>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 05</span>
+      <p class="quiz-q">In <code>MultiClassNetwork</code>, the weight matrix <code>self.W</code> has shape <code>(n_features, n_classes)</code>. Scaling to 5 input features and 4 output classes, what should the shape of <code>self.W</code> become?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">(4, 5), because the number of output classes should come before the number of input features.</button>
+        <button class="quiz-opt" data-correct="true">(5, 4), because each of the 5 features needs one weight per class, giving one column per class.</button>
+        <button class="quiz-opt" data-correct="false">(5, 5), because a weight matrix must always be square to support matrix multiplication.</button>
+        <button class="quiz-opt" data-correct="false">(20,), because the features and classes are combined into one flattened weight vector.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>Each of the 5 input features contributes one weight to every one of the 4 output classes, so W needs one row per feature and one column per class — shape (5, 4) — matching <code>np.dot(X, W)</code>. Weight matrices don't need to be square, and swapping the row/column order breaks the multiplication entirely.</p>
+      </div>
+    </div>
+
+    <h3>Debugging a NaN loss</h3>
+    <p>A training loss that suddenly turns into <code>NaN</code> is one of the first real bugs anyone hits once training enters the picture. One diagnosis: a predicted probability hit exactly 0, and <code>log(0)</code> is undefined, so clipping probabilities before taking the log should fix it. That claim is worth reproducing directly rather than trusting on faith:</p>
+
+    <pre class="code">bad_probs = np.array([0.0, 0.5, 0.5])   <span class="c"># simulates a broken/underflowed softmax output</span>
+true_label = 0
+
+print("Without clipping:", -np.log(bad_probs[true_label]))
+
+fixed_probs = np.clip(bad_probs, 1e-12, 1 - 1e-12)
+print("With clipping:   ", -np.log(fixed_probs[true_label]))</pre>
+
+    <p class="out-label">Output</p>
+    <div class="out">Without clipping: inf   &lt;- this is where NaN/inf starts
+With clipping:    27.631021115928547</div>
+
+    <p>Confirmed, with a nuance: <code>-log(0)</code> is <code>inf</code>, not <code>NaN</code> directly — but once that <code>inf</code> gets multiplied or averaged with other values later in a real training pipeline, it turns into <code>NaN</code> and silently poisons every subsequent update. The original diagnosis holds up under direct reproduction, which is exactly the standard worth holding any diagnosis to, AI-generated or otherwise.</p>
+
+    <div class="quiz" data-quiz>
+      <span class="quiz-label">Check your understanding — 06</span>
+      <p class="quiz-q">A model's loss starts producing <code>NaN</code> values partway through training, and it's suspected to be related to the softmax and cross-entropy computation. Which is the most likely root cause?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">The learning rate was set too low, causing the optimizer to stall and output NaN by default.</button>
+        <button class="quiz-opt" data-correct="false">The true labels were given as strings instead of integers, which numpy silently turns into NaN.</button>
+        <button class="quiz-opt" data-correct="true">A predicted probability underflowed to exactly 0, and <code>log(0)</code> inside cross-entropy produced infinity, which became NaN.</button>
+        <button class="quiz-opt" data-correct="false">Softmax was applied to a batch containing only one sample, which is mathematically undefined for batch size one.</button>
+      </div>
+      <div class="quiz-exp">
+        <span class="verdict"></span>
+        <p>When a predicted probability underflows to 0, <code>-log(0)</code> evaluates to infinity, and that infinity turns into NaN once combined with other values during training — exactly the failure reproduced and fixed above with probability clipping. A low learning rate slows training but doesn't produce NaN, and softmax works fine on a batch of one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 9: TAKEAWAYS ============ -->
+  <section id="takeaways" aria-labelledby="takeaways-h">
+    <p class="section-num">09 — Summary</p>
+    <h2 id="takeaways-h">Key takeaways</h2>
+    <ol class="takeaways">
+      <li><span class="n">01</span><span>Classical ML models fail on problems like the spiral because they can't cheaply learn arbitrarily-shaped, high-dimensional decision boundaries — neural networks can, by composing simple units.</span></li>
+      <li><span class="n">02</span><span>A single neuron — weighted sum plus activation — is mathematically identical to logistic regression. Depth and width are what add real power, not the atomic unit itself.</span></li>
+      <li><span class="n">03</span><span>Stacking neurons into layers, and layers into networks, is just matrix multiplication — "many neurons, all at once."</span></li>
+      <li><span class="n">04</span><span>Activation functions are what make depth meaningful at all. Sigmoid and tanh saturate for large inputs while ReLU doesn't — which matters a great deal once backpropagation enters the picture.</span></li>
+      <li><span class="n">05</span><span>Loss functions score predictions. Binary cross-entropy and softmax-plus-cross-entropy are the standard choices for classification, and both have real numerical-stability traps — log(0), overflow — worth knowing before they show up in production.</span></li>
+      <li><span class="n">06</span><span>AI coding and debugging assistants are useful accelerants, but every claim in this read was verified against a minimal reproduction rather than accepted outright — a habit worth keeping.</span></li>
+    </ol>
+
+    <h3>Self-check</h3>
+    <p>Seven questions, pulled from across this read — no new facts here, just a chance to retrieve what's already covered.</p>
+    <div class="selfcheck">
+      <details>
+        <summary>What's the relationship between logistic regression and a neural network?</summary>
+        <p class="ans">A single neuron with sigmoid activation performs the exact same computation as logistic regression. A neural network generalizes this by stacking many such units across layers, gaining the ability to learn non-linear boundaries.</p>
+      </details>
+      <details>
+        <summary>What does the bias term do?</summary>
+        <p class="ans">It shifts the decision boundary independently of the inputs — the neuron's baseline tendency before seeing any evidence. Without it, every boundary would be forced through the origin.</p>
+      </details>
+      <details>
+        <summary>Why does matrix multiplication replace loops in a network layer?</summary>
+        <p class="ans">It maps onto vectorized, hardware-accelerated linear algebra (BLAS, GPU cores), which a nested loop can't use — the difference between training in minutes versus being computationally infeasible.</p>
+      </details>
+      <details>
+        <summary>Why does a deep network need non-linear activations at all?</summary>
+        <p class="ans">A stack of purely linear layers collapses mathematically into a single linear layer. Without non-linear activation functions between layers, depth adds no representational power.</p>
+      </details>
+      <details>
+        <summary>What does it mean for sigmoid or tanh to "saturate," and how does ReLU differ?</summary>
+        <p class="ans">Their gradient flattens toward zero for large |z|, so output barely responds to further change in input. ReLU's gradient stays a constant 1 for any positive input, so it doesn't saturate on that side.</p>
+      </details>
+      <details>
+        <summary>Why subtract the max before exponentiating in softmax?</summary>
+        <p class="ans">Large logits can make exp() overflow to infinity, and inf/inf becomes NaN. Subtracting the max bounds every exponentiated value to at most 1 without changing the final probabilities — the shift cancels out in the ratio.</p>
+      </details>
+      <details>
+        <summary>Why cross-entropy over MSE for classification?</summary>
+        <p class="ans">Cross-entropy's gradient stays well-behaved and proportionally large for confidently wrong predictions, and it corresponds directly to maximizing the likelihood of the true labels — MSE's gradient can shrink badly in that same regime.</p>
+      </details>
+    </div>
+
+    <div class="box insight" style="margin-top:2em;">
+      <p class="box-title"><span class="dot"></span>What comes next</p>
+      <p>Everything here builds the <em>forward pass</em> — turning inputs into a prediction, and scoring that prediction. What's deliberately left out is how a network finds good weights in the first place: backpropagation and optimization, the process that actually teaches the network. That's its own read.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <p class="f-title">Neural Network 1 post read</p>
+    <p class="f-sub">The neuron, the network, the activation, the loss — everything except how it learns.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- scroll-spy TOC ---------- */
+  var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll('#tocNav a'));
+  function setActive(id){
+    tocLinks.forEach(function(a){
+      a.classList.toggle("active", a.getAttribute("href") === "#" + id);
+    });
+  }
+  if ("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) setActive(e.target.id);
+      });
+    }, {rootMargin: "-20% 0px -70% 0px", threshold: 0});
+    sections.forEach(function(s){ io.observe(s); });
+  }
+  tocLinks.forEach(function(a){
+    a.addEventListener("click", function(){
+      setTimeout(function(){ setActive(a.getAttribute("href").slice(1)); }, 50);
+    });
+  });
+
+  /* ---------- quizzes ---------- */
+  document.querySelectorAll("[data-quiz]").forEach(function(q){
+    var opts = q.querySelectorAll(".quiz-opt");
+    var exp = q.querySelector(".quiz-exp");
+    var verdict = q.querySelector(".verdict");
+    var answered = false;
+    opts.forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if (answered) return;
+        answered = true;
+        var correct = btn.getAttribute("data-correct") === "true";
+        opts.forEach(function(b){
+          b.disabled = true;
+          if (b.getAttribute("data-correct") === "true"){
+            b.classList.add("correct");
+          } else if (b === btn && !correct){
+            b.classList.add("incorrect");
+          }
+        });
+        verdict.textContent = correct ? "Correct." : "Not quite.";
+        verdict.classList.add(correct ? "ok" : "no");
+        exp.classList.add("show");
+      });
+    });
+  });
+
+  /* ---------- neuron simulator ---------- */
+  var simTemp = document.getElementById("simTemp");
+  var simFam = document.getElementById("simFam");
+  var simW1 = document.getElementById("simW1");
+  var simW2 = document.getElementById("simW2");
+  var simB = document.getElementById("simB");
+
+  function sigmoid(z){ return 1 / (1 + Math.exp(-z)); }
+  function fmt(n, d){ d = (d===undefined)?2:d; var s = n.toFixed(d); return (n>=0?"+":"") + s; }
+
+  function updateSim(){
+    var t = parseFloat(simTemp.value);
+    var f = parseFloat(simFam.value);
+    var w1 = parseFloat(simW1.value);
+    var w2 = parseFloat(simW2.value);
+    var b = parseFloat(simB.value);
+
+    document.getElementById("simTempVal").textContent = t.toFixed(2);
+    document.getElementById("simFamVal").textContent = f.toFixed(2);
+    document.getElementById("simW1Val").textContent = fmt(w1);
+    document.getElementById("simW2Val").textContent = fmt(w2);
+    document.getElementById("simBVal").textContent = fmt(b);
+
+    var z = t*w1 + f*w2 + b;
+    var p = sigmoid(z);
+    var touch = p >= 0.5;
+
+    var verdictEl = document.getElementById("simVerdict");
+    verdictEl.textContent = touch ? "Safe to touch" : "Don't touch";
+    verdictEl.className = "sim-verdict " + (touch ? "touch" : "notouch");
+
+    document.getElementById("simBar").style.width = (p*100).toFixed(1) + "%";
+
+    document.getElementById("simMath").innerHTML =
+      "z = (" + t.toFixed(2) + " × " + fmt(w1) + ") + (" + f.toFixed(2) + " × " + fmt(w2) + ") + " + fmt(b) + " = " + fmt(z) + "<br>" +
+      "P(touch) = σ(z) = " + p.toFixed(3);
+  }
+
+  [simTemp, simFam, simW1, simW2, simB].forEach(function(el){
+    el.addEventListener("input", updateSim);
+  });
+
+  document.querySelectorAll(".sim-preset").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var preset = btn.getAttribute("data-preset");
+      if (preset === "iron"){ simTemp.value = 0.9; simFam.value = 0.2; simW1.value=-2.0; simW2.value=1.5; simB.value=0.5; }
+      if (preset === "phone"){ simTemp.value = 0.3; simFam.value = 0.9; simW1.value=-2.0; simW2.value=1.5; simB.value=0.5; }
+      if (preset === "mug"){ simTemp.value = 0.6; simFam.value = 0.7; simW1.value=-2.0; simW2.value=1.5; simB.value=0.5; }
+      if (preset === "flip"){ simW1.value = 2.0; }
+      updateSim();
+    });
+  });
+
+  updateSim();
+
+  /* ---------- architecture diagram (built once) ---------- */
+  (function(){
+    var linesG = document.getElementById("archLines");
+    var nodesG = document.getElementById("archNodes");
+    if (!linesG || !nodesG) return;
+
+    var layers = [
+      {x: 60,  ys: [90, 190]},
+      {x: 235, ys: [55, 120, 185, 245]},
+      {x: 410, ys: [90, 160, 225]},
+      {x: 580, ys: [100, 160, 220]}
+    ];
+
+    var seed = 7;
+    function rand(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+
+    for (var L = 0; L < layers.length - 1; L++){
+      layers[L].ys.forEach(function(y1){
+        layers[L+1].ys.forEach(function(y2){
+          var w = rand();
+          var positive = rand() > 0.42;
+          var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", layers[L].x + 16);
+          line.setAttribute("y1", y1);
+          line.setAttribute("x2", layers[L+1].x - 16);
+          line.setAttribute("y2", y2);
+          line.setAttribute("stroke", positive ? "#8a1c2e" : "#e9cdd3");
+          line.setAttribute("stroke-width", (0.6 + w*2.4).toFixed(2));
+          line.setAttribute("stroke-linecap", "round");
+          linesG.appendChild(line);
+        });
+      });
+    }
+
+    layers.forEach(function(layer, li){
+      layer.ys.forEach(function(y){
+        var c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", layer.x);
+        c.setAttribute("cy", y);
+        c.setAttribute("r", 13);
+        c.setAttribute("fill", li === layers.length-1 ? "#4e0f1a" : "#fff");
+        c.setAttribute("stroke", "#6e1423");
+        c.setAttribute("stroke-width", "2");
+        nodesG.appendChild(c);
+      });
+    });
+  })();
+
+  /* ---------- activation function explorer ---------- */
+  (function(){
+    var fnChart = document.getElementById("fnChart");
+    var dChart = document.getElementById("dChart");
+    var zSlider = document.getElementById("actZ");
+    var zVal = document.getElementById("actZVal");
+    var fOut = document.getElementById("fOut");
+    var fdOut = document.getElementById("fdOut");
+    var fnChartLabel = document.getElementById("fnChartLabel");
+    var dChartLabel = document.getElementById("dChartLabel");
+    if (!fnChart) return;
+
+    var fns = {
+      sigmoid: {
+        f: function(z){ return 1/(1+Math.exp(-z)); },
+        d: function(z){ var s=1/(1+Math.exp(-z)); return s*(1-s); },
+        fRange: [0, 1], dRange: [0, 0.3], label: "sigmoid(z)"
+      },
+      tanh: {
+        f: function(z){ return Math.tanh(z); },
+        d: function(z){ return 1 - Math.tanh(z)*Math.tanh(z); },
+        fRange: [-1, 1], dRange: [0, 1], label: "tanh(z)"
+      },
+      relu: {
+        f: function(z){ return Math.max(0, z); },
+        d: function(z){ return z > 0 ? 1 : 0; },
+        fRange: [0, 6], dRange: [0, 1.15], label: "ReLU(z)"
+      }
+    };
+    var current = "sigmoid";
+
+    function buildPath(svg, fn, yMin, yMax){
+      svg.innerHTML = "";
+      var w = 300, h = 160, pad = 18;
+      // gridlines
+      for (var gx = 0; gx <= 4; gx++){
+        var lx = pad + gx*(w-2*pad)/4;
+        var gl = document.createElementNS("http://www.w3.org/2000/svg","line");
+        gl.setAttribute("x1", lx); gl.setAttribute("x2", lx);
+        gl.setAttribute("y1", pad); gl.setAttribute("y2", h-pad);
+        gl.setAttribute("class", "grid-line");
+        svg.appendChild(gl);
+      }
+      var zeroX = pad + (0 - (-6))/(12) * (w-2*pad);
+      var axisX = document.createElementNS("http://www.w3.org/2000/svg","line");
+      axisX.setAttribute("x1", zeroX); axisX.setAttribute("x2", zeroX);
+      axisX.setAttribute("y1", pad); axisX.setAttribute("y2", h-pad);
+      axisX.setAttribute("class", "axis-line");
+      svg.appendChild(axisX);
+
+      var pts = [];
+      for (var i = 0; i <= 120; i++){
+        var z = -6 + (12*i/120);
+        var val = fn(z);
+        var x = pad + (z+6)/12 * (w-2*pad);
+        var y = h-pad - (val-yMin)/(yMax-yMin) * (h-2*pad);
+        pts.push(x.toFixed(1) + "," + y.toFixed(1));
+      }
+      var path = document.createElementNS("http://www.w3.org/2000/svg","polyline");
+      path.setAttribute("points", pts.join(" "));
+      path.setAttribute("class", "fn-path");
+      svg.appendChild(path);
+      return {w:w, h:h, pad:pad, yMin:yMin, yMax:yMax};
+    }
+
+    var fnGeom, dGeom;
+
+    function render(){
+      var cfg = fns[current];
+      fnChartLabel.textContent = cfg.label;
+      dChartLabel.textContent = cfg.label.replace(/\(z\)$/, "′(z) — gradient");
+      fnGeom = buildPath(fnChart, cfg.f, cfg.fRange[0], cfg.fRange[1]);
+      dGeom = buildPath(dChart, cfg.d, cfg.dRange[0], cfg.dRange[1]);
+      updateDot();
+    }
+
+    function addDot(svg, geom, z, val){
+      var x = geom.pad + (z+6)/12 * (geom.w-2*geom.pad);
+      var y = geom.h-geom.pad - (val-geom.yMin)/(geom.yMax-geom.yMin) * (geom.h-2*geom.pad);
+      var existing = svg.querySelector(".fn-dot");
+      if (existing) existing.remove();
+      var dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx", x.toFixed(1));
+      dot.setAttribute("cy", Math.max(geom.pad, Math.min(geom.h-geom.pad, y)).toFixed(1));
+      dot.setAttribute("r", 4.5);
+      dot.setAttribute("class", "fn-dot");
+      svg.appendChild(dot);
+    }
+
+    function updateDot(){
+      var z = parseFloat(zSlider.value);
+      var cfg = fns[current];
+      var fv = cfg.f(z), dv = cfg.d(z);
+      zVal.textContent = z.toFixed(2);
+      fOut.textContent = fv.toFixed(4);
+      fdOut.textContent = dv.toFixed(6);
+      addDot(fnChart, fnGeom, z, fv);
+      addDot(dChart, dGeom, z, dv);
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        document.querySelectorAll(".tab-btn").forEach(function(b){
+          b.classList.remove("active"); b.setAttribute("aria-selected","false");
+        });
+        btn.classList.add("active"); btn.setAttribute("aria-selected","true");
+        current = btn.getAttribute("data-fn");
+        render();
+      });
+    });
+
+    zSlider.addEventListener("input", updateDot);
+    render();
+  })();
+
+  /* ---------- loss curve explorer ---------- */
+  (function(){
+    var svg = document.getElementById("lossChart");
+    var pSlider = document.getElementById("lossP");
+    var pVal = document.getElementById("lossPVal");
+    var lossOut = document.getElementById("lossOut");
+    if (!svg) return;
+
+    var w = 560, h = 190, pad = 32;
+    var maxLoss = 5;
+
+    function bce(p){ return -Math.log(Math.max(p, 1e-9)); }
+
+    function x(p){ return pad + p*(w-2*pad); }
+    function y(loss){ return h-pad - Math.min(loss, maxLoss)/maxLoss * (h-2*pad); }
+
+    function buildStatic(){
+      svg.innerHTML = "";
+      for (var i=0;i<=4;i++){
+        var gx = pad + i*(w-2*pad)/4;
+        var gl = document.createElementNS("http://www.w3.org/2000/svg","line");
+        gl.setAttribute("x1", gx); gl.setAttribute("x2", gx);
+        gl.setAttribute("y1", pad); gl.setAttribute("y2", h-pad);
+        gl.setAttribute("class","grid-line");
+        svg.appendChild(gl);
+      }
+      var axis = document.createElementNS("http://www.w3.org/2000/svg","line");
+      axis.setAttribute("x1", pad); axis.setAttribute("x2", w-pad);
+      axis.setAttribute("y1", h-pad); axis.setAttribute("y2", h-pad);
+      axis.setAttribute("class","axis-line");
+      svg.appendChild(axis);
+
+      var pts = [];
+      for (var i2=1;i2<=199;i2++){
+        var p = i2/200;
+        pts.push(x(p).toFixed(1) + "," + y(bce(p)).toFixed(1));
+      }
+      var poly = document.createElementNS("http://www.w3.org/2000/svg","polyline");
+      poly.setAttribute("points", pts.join(" "));
+      poly.setAttribute("class","fn-path");
+      svg.appendChild(poly);
+
+      ["0", "0.5", "1"].forEach(function(lbl){
+        var t = document.createElementNS("http://www.w3.org/2000/svg","text");
+        t.setAttribute("x", x(parseFloat(lbl)));
+        t.setAttribute("y", h-10);
+        t.setAttribute("text-anchor","middle");
+        t.setAttribute("font-family","IBM Plex Mono, monospace");
+        t.setAttribute("font-size","9");
+        t.setAttribute("fill","#8a7276");
+        t.textContent = "P=" + lbl;
+        svg.appendChild(t);
+      });
+    }
+
+    function updateDot(){
+      var p = parseFloat(pSlider.value);
+      var loss = bce(p);
+      pVal.textContent = p.toFixed(2);
+      lossOut.textContent = loss.toFixed(3);
+      var existing = svg.querySelector(".fn-dot");
+      if (existing) existing.remove();
+      var dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx", x(p).toFixed(1));
+      dot.setAttribute("cy", y(loss).toFixed(1));
+      dot.setAttribute("r", 5);
+      dot.setAttribute("class","fn-dot");
+      svg.appendChild(dot);
+    }
+
+    buildStatic();
+    updateDot();
+    pSlider.addEventListener("input", updateDot);
+  })();
+
+})();
+</script>
+</body>
+</html>
